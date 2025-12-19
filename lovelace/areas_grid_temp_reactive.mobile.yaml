@@ -1,0 +1,427 @@
+# =============================================================================
+# Home Assistant • Areas Grid (Mobile)
+# Temperature-reactive tiles with badges + quick-control chips
+#
+# Requirements (HACS):
+# - custom:layout-card
+# - custom:button-card
+#
+# Optional:
+# - None (this file is self-contained)
+#
+# How to use:
+# - Copy/paste into a Lovelace view (manual card config)
+# - For each room tile, fill in the `variables:` block placeholders
+# =============================================================================
+
+type: custom:layout-card
+layout_type: custom:grid-layout
+layout:
+  grid-template-columns: repeat(2, 1fr)
+  grid-auto-rows: minmax(44px, auto)
+  grid-gap: 9px
+
+# -----------------------------------------------------------------------------
+# BUTTON-CARD TEMPLATES
+# -----------------------------------------------------------------------------
+# These templates keep the YAML readable and make it easy for others to extend.
+# Everything is still "manual card" friendly: paste once, then duplicate tiles.
+# -----------------------------------------------------------------------------
+button_card_templates:
+
+  # -------------------------
+  # Base chip: small toggle button (fan/light/etc)
+  # -------------------------
+  cv_chip_toggle:
+    show_name: false
+    show_state: false
+    tap_action:
+      action: toggle
+    hold_action:
+      action: more-info
+    styles:
+      card:
+        - border-radius: 14px
+        - height: 26px
+        - padding: 0 8px
+        - background: rgba(255,255,255,0.06)
+        - border: |
+            [[[
+              // UI-editable chip outline
+              const w = states['input_number.cv_chip_outline_width']?.state ?? 1;
+              const a = states['input_number.cv_chip_outline_alpha']?.state ?? 0.22;
+              const on = (entity?.state === 'on');
+              const c = on ? `rgba(229,231,235,${a})` : `rgba(148,163,184,${a})`;
+              return `${w}px solid ${c}`;
+            ]]]
+        - box-shadow: none
+      grid:
+        - grid-template-areas: "\"i s\""
+        - grid-template-columns: 16px 1fr
+        - column-gap: 6px
+        - align-items: center
+      icon:
+        - width: 15px
+      state:
+        - font-size: 11px
+        - font-weight: 900
+        - color: "#e5e7eb"
+
+  # -------------------------
+  # Motion badge (orange "run" dot)
+  # Uses variables.motion_entity
+  # -------------------------
+  cv_badge_motion:
+    custom_fields:
+      badge: |
+        [[[
+          const mid = variables.motion_entity;
+          if (!mid) return '';
+          if (states[mid]?.state !== 'on') return '';
+          return `<div class="cvBadge cvBadge--motion"><ha-icon icon="mdi:run"></ha-icon></div>`;
+        ]]]
+
+  # -------------------------
+  # Door badge (blue "door-open" dot)
+  # Uses variables.door_entity
+  # -------------------------
+  cv_badge_door:
+    custom_fields:
+      badge: |
+        [[[
+          const did = variables.door_entity;
+          if (!did) return '';
+          const open = (states[did]?.state === 'on');
+          return open ? `<div class="cvBadge cvBadge--door"><ha-icon icon="mdi:door-open"></ha-icon></div>` : '';
+        ]]]
+
+  # -------------------------
+  # Temperature-reactive area tile (your main pattern)
+  # Uses:
+  #   variables.temp_entity        (required)
+  #   variables.humidity_entity    (optional)
+  #   variables.navigate_path      (optional)
+  #
+  # Custom fields:
+  #   main = temp display
+  #   sub  = humidity display
+  #   chips = nested horizontal-stack of chip buttons
+  #   badge = injected via badge templates above
+  # -------------------------
+  cv_area_tile:
+    tap_action:
+      action: navigate
+      navigation_path: |
+        [[[
+          return variables.navigate_path || '/lovelace/default_view';
+        ]]]
+    styles:
+      card:
+        - border-radius: 18px
+        - padding: 7px 9px
+        - background: >-
+            radial-gradient(120% 90% at 0% 0%, rgba(255,255,255,0.06),
+            rgba(255,255,255,0.00) 55%), rgba(10,12,16,0.62)
+        - border: |
+            [[[
+              // Temperature → outline colour
+              // Thresholds are UI-editable via helpers: input_number.cv_t1..cv_t4
+              const te = variables.temp_entity;
+              const t = parseFloat(states[te]?.state ?? 0);
+
+              const t1 = parseFloat(states['input_number.cv_t1']?.state ?? 19);
+              const t2 = parseFloat(states['input_number.cv_t2']?.state ?? 19.5);
+              const t3 = parseFloat(states['input_number.cv_t3']?.state ?? 21.5);
+              const t4 = parseFloat(states['input_number.cv_t4']?.state ?? 22.5);
+
+              const w  = states['input_number.cv_outline_width']?.state ?? 2;
+              const a  = states['input_number.cv_outline_alpha']?.state ?? 0.22;
+
+              const cCold = `rgba(56,189,248,${a})`;
+              const cCool = `rgba(125,211,252,${a})`;
+              const cOk   = `rgba(74,222,128,${a})`;
+              const cWarm = `rgba(250,204,21,${a})`;
+              const cHot  = `rgba(239,68,68,${a})`;
+
+              const c = (t < t1) ? cCold : (t < t2) ? cCool : (t < t3) ? cOk : (t < t4) ? cWarm : cHot;
+              return `${w}px solid ${c}`;
+            ]]]
+        - box-shadow: none
+      grid:
+        - grid-template-areas: "\"i n badge\" \"main main main\" \"sub sub sub\" \"chips chips chips\""
+        - grid-template-columns: 24px 1fr 22px
+        - row-gap: 2px
+        - align-items: center
+
+      icon:
+        - width: 17px
+        - color: |
+            [[[
+              // Temperature → icon colour
+              const te = variables.temp_entity;
+              const t = parseFloat(states[te]?.state ?? 0);
+
+              const t1 = parseFloat(states['input_number.cv_t1']?.state ?? 19);
+              const t2 = parseFloat(states['input_number.cv_t2']?.state ?? 19.5);
+              const t3 = parseFloat(states['input_number.cv_t3']?.state ?? 21.5);
+              const t4 = parseFloat(states['input_number.cv_t4']?.state ?? 22.5);
+
+              return (t < t1) ? "#38bdf8"
+                   : (t < t2) ? "#7dd3fc"
+                   : (t < t3) ? "#4ade80"
+                   : (t < t4) ? "#facc15"
+                   : "#ef4444";
+            ]]]
+
+      name:
+        - font-size: 14px
+        - font-weight: 900
+        - letter-spacing: 0.25px
+        - justify-self: center
+        - text-align: center
+        - width: 100%
+        - color: "#e5e7eb"
+
+      custom_fields:
+        badge:
+          - justify-self: end
+          - align-self: start
+
+        main:
+          - font-size: 16px
+          - font-weight: 900
+          - line-height: 1.05
+          - color: "#e5e7eb"
+          - justify-self: start
+
+        sub:
+          - font-size: 11px
+          - font-weight: 900
+          - opacity: 0.9
+          - color: "#cbd5e1"
+          - min-height: 14px
+          - justify-self: start
+
+        chips:
+          - justify-self: end
+
+    # Display fields (temp + humidity)
+    custom_fields:
+      main: |
+        [[[
+          const te = variables.temp_entity;
+          const t = parseFloat(states[te]?.state);
+          return isNaN(t) ? '—' : `${t.toFixed(1)}°C`;
+        ]]]
+      sub: |
+        [[[
+          const he = variables.humidity_entity;
+          if (!he) return '';
+          const h = parseFloat(states[he]?.state);
+          return isNaN(h) ? '' : `${h.toFixed(0)}%`;
+        ]]]
+
+    # Shared badge CSS (motion + door)
+    extra_styles: |
+      .cvBadge{
+        width:18px; height:18px;
+        border-radius:999px;
+        display:flex; align-items:center; justify-content:center;
+      }
+      .cvBadge ha-icon{
+        width:16px; height:16px;
+        color:#0b0f14;
+      }
+      .cvBadge--motion{
+        background:rgba(245,158,11,0.95);
+        border:1px solid rgba(245,158,11,0.22);
+      }
+      .cvBadge--door{
+        background:rgba(56,189,248,0.95);
+        border:1px solid rgba(56,189,248,0.22);
+      }
+
+# -----------------------------------------------------------------------------
+# CARDS
+# -----------------------------------------------------------------------------
+cards:
+
+  # ===========================================================================
+  # Example: "All Lights" group tile
+  #
+  # Public version uses placeholders:
+  # - variables.group_light_entity must be replaced by the user
+  # - navigation_path is a placeholder too
+  # ===========================================================================
+  - type: custom:button-card
+    name: All Lights
+    icon: mdi:lightbulb-group
+    entity: "[REPLACE_ME] light group entity (e.g. light.all_lights)"
+    show_state: true
+    tap_action:
+      action: toggle
+    hold_action:
+      action: navigate
+      navigation_path: "[REPLACE_ME] /dashboard/your_lights_view"
+    double_tap_action:
+      action: navigate
+      navigation_path: "[REPLACE_ME] /dashboard/your_lights_view"
+    styles:
+      card:
+        - border-radius: 18px
+        - padding: 8px 12px
+        - background: rgba(10,12,16,0.62)
+        - border: |
+            [[[
+              // Outline colour based on light hs_color when ON, neutral when OFF.
+              // Works best on a light group that exposes hs_color.
+              const w = states['input_number.cv_outline_width']?.state ?? 2;
+              const a = states['input_number.cv_outline_alpha']?.state ?? 0.22;
+
+              const on = (entity?.state === 'on');
+              const hs = entity?.attributes?.hs_color;
+              const h = hs ? hs[0] : 200;
+              const s = hs ? hs[1] : 40;
+
+              const c = on ? `hsla(${h}, ${s}%, 60%, ${a})` : `rgba(148,163,184,${a})`;
+              return `${w}px solid ${c}`;
+            ]]]
+        - box-shadow: none
+      grid:
+        - grid-template-areas: "\"i n\" \"i s\""
+        - grid-template-columns: 44px 1fr
+        - grid-template-rows: min-content min-content
+        - align-items: center
+      icon:
+        - width: 26px
+        - color: |
+            [[[
+              const on = (entity?.state === 'on');
+              const hs = entity?.attributes?.hs_color;
+              const h = hs ? hs[0] : 200;
+              const s = hs ? hs[1] : 40;
+              return on ? `hsl(${h}, ${s}%, 60%)` : '#94a3b8';
+            ]]]
+        - opacity: |
+            [[[
+              return (entity?.state === 'on') ? '1' : '0.45';
+            ]]]
+      name:
+        - font-size: 14px
+        - font-weight: 900
+        - letter-spacing: 0.25px
+        - color: "#e5e7eb"
+        - justify-self: left
+      state:
+        - font-size: 12px
+        - opacity: 0.9
+        - color: "#cbd5e1"
+        - justify-self: left
+    view_layout:
+      grid-column: span 2
+
+  # ===========================================================================
+  # Example Area Tile #1 (motion badge + fan/light chips)
+  # Duplicate this block per room and only change variables + name + icon.
+  # ===========================================================================
+  - type: custom:button-card
+    template:
+      - cv_area_tile
+      - cv_badge_motion
+    name: "[ROOM NAME] (e.g. Kitchen/Diner)"
+    icon: "[ROOM ICON] (e.g. mdi:silverware-fork-knife)"
+    variables:
+      navigate_path: "[REPLACE_ME] /dashboard/areas-kitchen"
+      motion_entity: "[REPLACE_ME] binary_sensor.kitchen_motion"
+      temp_entity: "[REPLACE_ME] sensor.kitchen_temperature"
+      humidity_entity: "[REPLACE_ME] sensor.kitchen_humidity"
+    custom_fields:
+      chips:
+        card:
+          type: horizontal-stack
+          cards:
+            - type: custom:button-card
+              template: cv_chip_toggle
+              entity: "[REPLACE_ME] fan.kitchen_air"
+              icon: mdi:fan
+              # Optional: override icon colours
+              color_type: icon
+              state:
+                - value: "on"
+                  color: "#e5e7eb"
+                - value: "off"
+                  color: "#475569"
+
+            - type: custom:button-card
+              template: cv_chip_toggle
+              entity: "[REPLACE_ME] light_or_switch_for_room_lights"
+              icon: mdi:lightbulb
+              color_type: icon
+              state:
+                - value: "on"
+                  color: "#facc15"
+                - value: "off"
+                  color: "#94a3b8"
+              styles:
+                card:
+                  - width: 40px
+                  - padding: 0px
+                icon:
+                  - width: 16px
+
+  # ===========================================================================
+  # Example Area Tile #2 (door badge + motion priority)
+  # If motion is ON → show motion badge, else if door is open → show door badge.
+  # ===========================================================================
+  - type: custom:button-card
+    template: cv_area_tile
+    name: "[ROOM NAME] (e.g. Front Door)"
+    icon: mdi:door
+    variables:
+      navigate_path: "[REPLACE_ME] /dashboard/areas-front-door"
+      temp_entity: "[REPLACE_ME] sensor.front_door_temperature"
+      humidity_entity: "[REPLACE_ME] sensor.front_door_humidity"
+      # For this example, we use BOTH:
+      motion_entity: "[REPLACE_ME] binary_sensor.front_door_motion"
+      door_entity: "[REPLACE_ME] binary_sensor.front_door_contact"
+    custom_fields:
+      badge: |
+        [[[
+          // Motion badge has priority; otherwise door-open badge
+          const mid = variables.motion_entity;
+          const did = variables.door_entity;
+
+          if (mid && states[mid]?.state === 'on') {
+            return `<div class="cvBadge cvBadge--motion"><ha-icon icon="mdi:run"></ha-icon></div>`;
+          }
+          if (did && states[did]?.state === 'on') {
+            return `<div class="cvBadge cvBadge--door"><ha-icon icon="mdi:door-open"></ha-icon></div>`;
+          }
+          return '';
+        ]]]
+      chips:
+        card:
+          type: horizontal-stack
+          cards:
+            - type: custom:button-card
+              template: cv_chip_toggle
+              entity: "[REPLACE_ME] light.front_door"
+              icon: mdi:lightbulb
+              color_type: icon
+              color: auto
+              state:
+                - value: "off"
+                  color: "#94a3b8"
+              styles:
+                card:
+                  - width: 40px
+                  - padding: 0px
+                icon:
+                  - width: 16px
+
+# -----------------------------------------------------------------------------
+# Mobile-only visibility (matches the pattern)
+# -----------------------------------------------------------------------------
+visibility:
+  - condition: screen
+    media_query: "(min-width: 0px) and (max-width: 767px)"
