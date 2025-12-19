@@ -1,0 +1,77 @@
+# =============================================================================
+# Helpers used by the Areas Grid template
+# Put this in:
+#   /config/helpers/input_numbers.yaml
+# OR merge into an existing helpers file.
+#
+# Then restart Home Assistant.
+# =============================================================================
+
+input_number:
+  cv_t1:
+    name: "CV Temp Threshold 1"
+    min: 10
+    max: 30
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+    initial: 19
+
+  cv_t2:
+    name: "CV Temp Threshold 2"
+    min: 10
+    max: 30
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+    initial: 19.5
+
+  cv_t3:
+    name: "CV Temp Threshold 3"
+    min: 10
+    max: 30
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+    initial: 21.5
+
+  cv_t4:
+    name: "CV Temp Threshold 4"
+    min: 10
+    max: 30
+    step: 0.1
+    mode: box
+    unit_of_measurement: "°C"
+    initial: 22.5
+
+  cv_outline_width:
+    name: "CV Outline Width"
+    min: 0
+    max: 6
+    step: 1
+    mode: slider
+    initial: 2
+
+  cv_outline_alpha:
+    name: "CV Outline Alpha"
+    min: 0
+    max: 1
+    step: 0.01
+    mode: slider
+    initial: 0.22
+
+  cv_chip_outline_width:
+    name: "CV Chip Outline Width"
+    min: 0
+    max: 4
+    step: 1
+    mode: slider
+    initial: 1
+
+  cv_chip_outline_alpha:
+    name: "CV Chip Outline Alpha"
+    min: 0
+    max: 1
+    step: 0.01
+    mode: slider
+    initial: 0.22
